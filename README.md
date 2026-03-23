@@ -73,4 +73,8 @@ docs/
 - Varsha – Initial Implementation
 
 ## License
+<<<<<<< HEAD
 This project is developed for academic purposes as part of the ICT946 Capstone Project.
+=======
+This project is developed for academic purposes as part of the ICT946 Capstone Project.
+>>>>>>> d07f0cc (Added backend functionality planning)
