@@ -35,7 +35,7 @@ const themeToggle = {
 
 // API Helper
 const API = {
-    baseURL: '/bd-dine-restaurant/api',
+    baseURL: '/secure-restaurant-ordering-and-table-management-system/bd-dine/api',
     
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}/${endpoint}`;
@@ -74,13 +74,6 @@ const FormValidator = {
     validateEmail(email) {
         const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return re.test(email);
-    },
-    
-    validatePhone(phone) {
-        // Australian phone format
-        const re = /^(\+61|0)[4-5][0-9]{8}$/;
-        const cleaned = phone.replace(/[^0-9+]/g, '');
-        return re.test(cleaned);
     },
     
     validatePassword(password) {
@@ -124,13 +117,29 @@ const FormValidator = {
 // Registration Handler
 const Registration = {
     async submit(formData) {
-        try {
-            localStorage.setItem('demoUser', JSON.stringify(formData));
-            return { success: true, message: 'Registration successful!' };
-        } catch (error) {
-            return { success: false, message: 'Registration failed. Please try again.' };
-        }
-    },
+    try {
+        const response = await fetch('http://localhost/secure-restaurant-ordering-and-table-management-system/bd-dine/api/register.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+
+       const data = await response.json();
+
+if (data.success) {
+    alert("Registration successful!");
+    window.location.href = "login.html";
+} else {
+    alert(data.message);
+}
+
+return data;
+    } catch (error) {
+        return { success: false, message: error.message };
+    }
+},
     
     init() {
         const form = document.getElementById('registration-form');
@@ -144,7 +153,6 @@ const Registration = {
                 password: form.password.value,
                 first_name: form.first_name.value,
                 last_name: form.last_name.value,
-                phone: form.phone.value
             };
             
             // Validate
@@ -152,11 +160,6 @@ const Registration = {
             
             if (!FormValidator.validateEmail(formData.email)) {
                 FormValidator.showError(form.email, 'Invalid email address');
-                isValid = false;
-            }
-            
-            if (!FormValidator.validatePhone(formData.phone)) {
-                FormValidator.showError(form.phone, 'Invalid phone number (Australian format)');
                 isValid = false;
             }
             
@@ -178,16 +181,10 @@ const Registration = {
             submitBtn.disabled = true;
             submitBtn.textContent = 'Creating Account...';
             
-            const result = await this.submit(formData);
+            await this.submit(formData);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Account';
             
-            if (result.success) {
-                alert('Registration successful! Please login.');
-                window.location.href = 'login.html';
-            } else {
-                alert(result.message || 'Registration failed. Please try again.');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Create Account';
-            }
         });
     }
 };
@@ -198,57 +195,45 @@ const Login = {
     userId: null,
     adminId: null,
     
+    async checkIfAlreadyLoggedIn() {
+        try {
+            const result = await API.get('check-session.php');
+            if (result.valid) {
+                const statusBox = document.getElementById('already-logged-in-box');
+                const form = document.getElementById('login-form');
+
+                if (statusBox) {
+                    statusBox.style.display = 'block';
+                }
+
+                if (form) {
+                    form.style.display = 'none';
+                }
+            }
+        } catch (error) {
+            console.error('Session check failed:', error);
+        }
+    },
+
     async authenticateStep1(credentials) {
     try {
-        const savedUser = JSON.parse(localStorage.getItem('demoUser'));
-
-        if (!savedUser) {
-            return { success: false, message: 'No registered user found. Please register first.' };
-        }
-
-        if (
-            credentials.email === savedUser.email &&
-            credentials.password === savedUser.password
-        ) {
-            this.userId = 1;
-            return { success: true, requires_2fa: false, message: 'Login successful!' };
-        } else {
-            return { success: false, message: 'Invalid email or password.' };
-        }
+        const response = await API.post('login.php', credentials);
+        return response;
     } catch (error) {
-        return { success: false, message: 'Authentication failed. Please try again.' };
+    return { success: false, message: 'Authentication failed. Please try again.' };
     }
 },
-    
-    async authenticateStep2(code) {
-        try {
-            const isAdmin = this.adminId !== null;
-            const endpoint = isAdmin ? 'admin-verify-2fa.php' : 'verify-2fa.php';
-            const response = await API.post(endpoint, {
-                user_id: this.userId,
-                admin_id: this.adminId,
-                code: code
-            });
-            return response;
-        } catch (error) {
-            return { success: false, message: 'Verification failed. Please try again.' };
-        }
-    },
-    
-    showStep2() {
-        document.getElementById('step-1').style.display = 'none';
-        document.getElementById('step-2').style.display = 'block';
-        this.currentStep = 2;
-    },
     
     init() {
         const form = document.getElementById('login-form');
         if (!form) return;
+
+        this.checkIfAlreadyLoggedIn();
         
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            if (this.currentStep === 1) {
+            if (true) {
                 // Step 1: Username/Email + Password
                 const isAdmin = window.location.pathname.includes('admin-login');
                 const credentials = isAdmin
@@ -273,36 +258,11 @@ const Login = {
                 } else {
                     alert(result.message || 'Login failed. Please try again.');
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Login';
-                }
-                
-            } else if (this.currentStep === 2) {
-                // Step 2: 2FA Code
-                const code = form.code.value;
-                
-                if (code.length !== 6) {
-                    FormValidator.showError(form.code, 'Please enter the 6-digit code');
-                    return;
-                }
-                
-                const submitBtn = form.querySelector('button[type="submit"]');
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Verifying...';
-                
-                const result = await this.authenticateStep2(code);
-                
-                if (result.success) {
-                    const isAdmin = this.adminId !== null;
-                    const redirectURL = isAdmin ? 'admin-dashboard.html' : 'customer-dashboard.html';
-                    window.location.href = redirectURL;
-                } else {
-                    alert(result.message || 'Verification failed. Please try again.');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Verify';
+                    submitBtn.innerHTML = 'Login <i class="fas fa-arrow-right"></i>';
                 }
             }
         });
-    }
+        }
 };
 
 // Booking Handler
@@ -436,3 +396,14 @@ document.addEventListener('DOMContentLoaded', () => {
 window.API = API;
 window.FormValidator = FormValidator;
 window.Session = Session;
+
+// ===== CART MENU TOGGLE =====
+const menuToggle = document.getElementById("cart-menu-toggle");
+const dropdown = document.getElementById("cart-menu-dropdown");
+
+if (menuToggle && dropdown) {
+    menuToggle.addEventListener("click", () => {
+        dropdown.style.display =
+            dropdown.style.display === "none" ? "block" : "none";
+    });
+}

@@ -134,7 +134,7 @@ ini_set('error_log', LOG_PATH . 'php_errors.log');
 // Session configuration
 ini_set('session.cookie_httponly', 1);
 ini_set('session.use_only_cookies', 1);
-ini_set('session.cookie_secure', 1); // Enable in production with HTTPS
+ini_set('session.cookie_secure', 0); // Enable in production with HTTPS
 ini_set('session.cookie_samesite', 'Strict');
 
 ?>

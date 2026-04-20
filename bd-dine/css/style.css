@@ -620,3 +620,17 @@ a:hover {
 .gap-2 { gap: var(--spacing-sm); }
 .gap-3 { gap: var(--spacing-md); }
 .gap-4 { gap: var(--spacing-lg); }
+
+.login-status-box {
+    text-align: center;
+    padding: var(--spacing-xl);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 12px 40px var(--shadow);
+    margin-bottom: var(--spacing-lg);
+}
+
+.login-status-box h3 {
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-primary);
+}
